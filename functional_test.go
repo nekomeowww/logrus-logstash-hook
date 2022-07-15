@@ -4,15 +4,18 @@ import (
 	"bytes"
 	"fmt"
 	"net"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/nekomeowww/logrus-logstash-hook"
+	logrustash "github.com/nekomeowww/logrus-logstash-hook"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEntryIsNotChangedByLogstashFormatter(t *testing.T) {
+	assert := assert.New(t)
+
 	buffer := bytes.NewBufferString("")
 	bufferOut := bytes.NewBufferString("")
 
@@ -24,15 +27,13 @@ func TestEntryIsNotChangedByLogstashFormatter(t *testing.T) {
 
 	log.Info("hello world")
 
-	if !strings.Contains(buffer.String(), "NICKNAME\":") {
-		t.Errorf("expected logstash message to have '%s': %#v", "NICKNAME\":", buffer.String())
-	}
-	if strings.Contains(bufferOut.String(), "NICKNAME\":") {
-		t.Errorf("expected main logrus message to not have '%s': %#v", "NICKNAME\":", buffer.String())
-	}
+	assert.Contains(buffer.String(), `NICKNAME":`, fmt.Sprintf("expected logstash message to have '%s': %v", `NICKNAME":`, buffer.String()))
+	assert.NotContains(bufferOut.String(), `NICKNAME":`, fmt.Sprintf("expected main logrus message to not have '%s': %v", `NICKNAME":`, buffer.String()))
 }
 
 func TestTimestampFormatKitchen(t *testing.T) {
+	assert := assert.New(t)
+
 	log := logrus.New()
 	buffer := bytes.NewBufferString("")
 	hook := logrustash.New(buffer, logrustash.LogstashFormatter{
@@ -48,15 +49,15 @@ func TestTimestampFormatKitchen(t *testing.T) {
 	log.Hooks.Add(hook)
 
 	log.Error("this is an error message!")
+
 	mTime := time.Now()
-	expected := fmt.Sprintf(`{"@timestamp":"%s","HOSTNAME":"localhost","USERNAME":"root","level":"error","message":"this is an error message!"}
-`, mTime.Format(time.Kitchen))
-	if buffer.String() != expected {
-		t.Errorf("expected JSON to be '%#v' but got '%#v'", expected, buffer.String())
-	}
+	expected := fmt.Sprintf(`{"@timestamp":"%s","HOSTNAME":"localhost","USERNAME":"root","level":"error","message":"this is an error message!"}`+"\n", mTime.Format(time.Kitchen))
+	assert.Equal(expected, buffer.String(), fmt.Sprintf("expected JSON to be '%#v' but got '%#v'", expected, buffer.String()))
 }
 
 func TestTextFormatLogstash(t *testing.T) {
+	assert := assert.New(t)
+
 	log := logrus.New()
 	buffer := bytes.NewBufferString("")
 	hook := logrustash.New(buffer, logrustash.LogstashFormatter{
@@ -68,42 +69,43 @@ func TestTextFormatLogstash(t *testing.T) {
 	log.Hooks.Add(hook)
 
 	log.Warning("this is a warning message!")
+
 	mTime := time.Now()
 	expected := fmt.Sprintf(`time="%s" level=warning msg="this is a warning message!" HOSTNAME=localhost USERNAME=root
 `, mTime.Format(time.Kitchen))
-	if buffer.String() != expected {
-		t.Errorf("expected JSON to be '%#v' but got '%#v'", expected, buffer.String())
-	}
+	assert.Equal(expected, buffer.String(), fmt.Sprintf("expected JSON to be '%#v' but got '%v'", expected, buffer.String()))
 }
 
 // Github issue #39
 func TestLogWithFieldsDoesNotOverrideHookFields(t *testing.T) {
+	assert := assert.New(t)
+
 	log := logrus.New()
 	buffer := bytes.NewBufferString("")
 	hook := logrustash.New(buffer, logrustash.LogstashFormatter{
 		Formatter: &logrus.JSONFormatter{},
 		Fields:    logrus.Fields{},
 	})
+
 	log.Hooks.Add(hook)
 	log.WithField("animal", "walrus").Info("bla")
-	attr := "\"animal\":\"walrus\""
-	if !strings.Contains(buffer.String(), attr) {
-		t.Errorf("expected to have '%s' in '%s'", attr, buffer.String())
-	}
+
+	attr := `fields":"animal=walrus`
+	assert.Contains(buffer.String(), attr, fmt.Sprintf("expected to have '%s' in '%s'", attr, buffer.String()))
+
 	buffer.Reset()
 	log.Info("hahaha")
-	if strings.Contains(buffer.String(), attr) {
-		t.Errorf("expected not to have '%s' in '%s'", attr, buffer.String())
-	}
+	assert.NotContains(buffer.String(), attr, fmt.Sprintf("expected not to have '%s' in '%s'", attr, buffer.String()))
 }
 
 func TestDefaultFormatterNotOverrideMyLogstashFieldsValues(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
 	formatter := logrustash.DefaultFormatter(logrus.Fields{"@version": "2", "type": "mylogs"})
 
 	dataBytes, err := formatter.Format(&logrus.Entry{Data: logrus.Fields{}})
-	if err != nil {
-		t.Errorf("expected Format to not return error: %s", err)
-	}
+	require.NoError(err, fmt.Sprintf("expected Format to not return error: %s", err))
 
 	expected := []string{
 		`"@version":"2"`,
@@ -111,19 +113,18 @@ func TestDefaultFormatterNotOverrideMyLogstashFieldsValues(t *testing.T) {
 	}
 
 	for _, expField := range expected {
-		if !strings.Contains(string(dataBytes), expField) {
-			t.Errorf("expected '%s' to be in '%s'", expField, string(dataBytes))
-		}
+		assert.Contains(string(dataBytes), expField, "expected '%s' to be in '%s'", expField, string(dataBytes))
 	}
 }
 
 func TestDefaultFormatterLogstashFields(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
 	formatter := logrustash.DefaultFormatter(logrus.Fields{})
 
 	dataBytes, err := formatter.Format(&logrus.Entry{Data: logrus.Fields{}})
-	if err != nil {
-		t.Errorf("expected Format to not return error: %s", err)
-	}
+	require.NoError(err, "expected Format to not return error: %s", err)
 
 	expected := []string{
 		`"@version":"1"`,
@@ -131,9 +132,7 @@ func TestDefaultFormatterLogstashFields(t *testing.T) {
 	}
 
 	for _, expField := range expected {
-		if !strings.Contains(string(dataBytes), expField) {
-			t.Errorf("expected '%s' to be in '%s'", expField, string(dataBytes))
-		}
+		assert.Contains(string(dataBytes), expField, "expected '%s' to be in '%s'", expField, string(dataBytes))
 	}
 }
 
