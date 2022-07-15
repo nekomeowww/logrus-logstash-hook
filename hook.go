@@ -3,9 +3,17 @@ package logrustash
 import (
 	"fmt"
 	"io"
+	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/sirupsen/logrus"
+)
+
+type ContextKey string
+
+const (
+	ContextKeyRuntimeCaller ContextKey = "context.key.runtime.caller"
 )
 
 // Hook represents a Logstash hook.
@@ -66,17 +74,27 @@ func copyEntry(e *logrus.Entry, fields logrus.Fields) *logrus.Entry {
 	ne.Time = e.Time
 	ne.Data = logrus.Fields{}
 
-	if e.HasCaller() {
-		ne.Data["function"] = e.Caller.Function
-		ne.Data["file"] = fmt.Sprintf("%s:%d", e.Caller.File, e.Caller.Line)
+	if e.Context != nil {
+		caller, _ := e.Context.Value(ContextKeyRuntimeCaller).(*runtime.Frame)
+		if caller != nil {
+			ne.Data["function"] = caller.Function
+			ne.Data["file"] = fmt.Sprintf("%s:%d", caller.File, caller.Line)
+		}
+	}
+
+	if len(e.Data) > 0 {
+		fieldsStrs := make([]string, 0)
+		for k, v := range e.Data {
+			fieldsStrs = append(fieldsStrs, fmt.Sprintf("%s=%v", k, v))
+			delete(e.Data, k)
+		}
+		ne.Data["fields"] = strings.Join(fieldsStrs, " ")
 	}
 
 	for k, v := range fields {
 		ne.Data[k] = v
 	}
-	for k, v := range e.Data {
-		ne.Data[k] = v
-	}
+
 	return ne
 }
 
