@@ -1,6 +1,6 @@
 # Logstash hook for logrus <img src="http://i.imgur.com/hTeVwmJ.png" width="40" height="40" alt=":walrus:" class="emoji" title=":walrus:" />
 [![Build Status](https://travis-ci.org/bshuster-repo/logrus-logstash-hook.svg?branch=master)](https://travis-ci.org/bshuster-repo/logrus-logstash-hook)
-[![Go Report Status](https://goreportcard.com/badge/github.com/bshuster-repo/logrus-logstash-hook)](https://goreportcard.com/report/github.com/bshuster-repo/logrus-logstash-hook)
+[![Go Report Status](https://goreportcard.com/badge/github.com/nekomeowww/logrus-logstash-hook)](https://goreportcard.com/report/github.com/nekomeowww/logrus-logstash-hook)
 
 Use this hook to send the logs to [Logstash](https://www.elastic.co/products/logstash).
 
@@ -10,7 +10,7 @@ Use this hook to send the logs to [Logstash](https://www.elastic.co/products/log
 package main
 
 import (
-        "github.com/bshuster-repo/logrus-logstash-hook"
+        "github.com/nekomeowww/logrus-logstash-hook"
         "github.com/sirupsen/logrus"
         "net"
 )

@@ -1,4 +1,4 @@
-module github.com/bshuster-repo/logrus-logstash-hook
+module github.com/nekomeowww/logrus-logstash-hook
 
 go 1.16
 

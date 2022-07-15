@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bshuster-repo/logrus-logstash-hook"
+	"github.com/nekomeowww/logrus-logstash-hook"
 	"github.com/sirupsen/logrus"
 )
 
