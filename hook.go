@@ -74,18 +74,21 @@ func copyEntry(e *logrus.Entry, fields logrus.Fields) *logrus.Entry {
 	ne.Time = e.Time
 	ne.Data = logrus.Fields{}
 
-	if e.Context != nil {
+	if e.Logger.ReportCaller && e.Context != nil {
 		caller, _ := e.Context.Value(ContextKeyRuntimeCaller).(*runtime.Frame)
 		if caller != nil {
 			ne.Data["function"] = caller.Function
 			ne.Data["file"] = fmt.Sprintf("%s:%d", caller.File, caller.Line)
 		}
 	}
-	if e.Data["file"] != nil {
+
+	if e.Logger.ReportCaller && e.Data["file"] != nil {
 		ne.Data["file"] = e.Data["file"]
+		delete(e.Data, "file")
 	}
-	if e.Data["function"] != nil {
+	if e.Logger.ReportCaller && e.Data["function"] != nil {
 		ne.Data["function"] = e.Data["function"]
+		delete(e.Data, "function")
 	}
 
 	if len(e.Data) > 0 {

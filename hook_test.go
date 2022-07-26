@@ -141,6 +141,41 @@ func TestDefaultFormatterWithCaller(t *testing.T) {
 	}
 }
 
+func TestDefaultFormatterWithFileAndFunctionFieldOverride(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	format := DefaultFormatter(logrus.Fields{"ID": 123})
+
+	entry := &logrus.Entry{
+		Message: "msg1",
+		Logger:  logrus.New(),
+	}
+
+	pc, f, l, _ := runtime.Caller(0)
+	functionName := runtime.FuncForPC(pc).Name()
+	entry.Logger.ReportCaller = true
+	entry.Data = logrus.Fields{
+		"file":     fmt.Sprintf("%s:%d", f, l),
+		"function": functionName,
+	}
+
+	res, err := format.Format(entry)
+	require.NoError(err)
+	require.NotEmpty(res)
+
+	expected := []string{
+		fmt.Sprintf("file\":\"%s:%d", f, l),
+		fmt.Sprintf("function\":\"%s", functionName),
+		"ID\":123",
+		"message\":\"msg1\"",
+	}
+
+	for _, exp := range expected {
+		assert.Contains(string(res), exp)
+	}
+}
+
 func TestDefaultFormatterWithEmptyFields(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
