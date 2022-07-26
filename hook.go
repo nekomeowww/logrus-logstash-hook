@@ -81,6 +81,12 @@ func copyEntry(e *logrus.Entry, fields logrus.Fields) *logrus.Entry {
 			ne.Data["file"] = fmt.Sprintf("%s:%d", caller.File, caller.Line)
 		}
 	}
+	if e.Data["file"] != nil {
+		ne.Data["file"] = e.Data["file"]
+	}
+	if e.Data["function"] != nil {
+		ne.Data["function"] = e.Data["function"]
+	}
 
 	if len(e.Data) > 0 {
 		fieldsStrs := make([]string, 0)
