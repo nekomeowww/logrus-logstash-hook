@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -144,8 +145,11 @@ func DefaultFormatter(fields logrus.Fields) logrus.Formatter {
 	}
 
 	return LogstashFormatter{
-		Formatter: &logrus.JSONFormatter{FieldMap: logstashFieldMap},
-		Fields:    fields,
+		Formatter: &logrus.JSONFormatter{
+			TimestampFormat: time.RFC3339Nano,
+			FieldMap:        logstashFieldMap,
+		},
+		Fields: fields,
 	}
 }
 
