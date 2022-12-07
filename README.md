@@ -17,6 +17,7 @@ input {
     tcp {
         port => 8911 # Select a free and opening port
         codec => json
+        tcp_keep_alive => true # optional: keep the connection alive
     }
 }
 
@@ -38,6 +39,7 @@ input {
     tcp {
         port => 8911 # Select a free and opening port
         codec => json
+        tcp_keep_alive => true # optional: keep the connection alive
     }
 }
 
@@ -66,17 +68,14 @@ func main() {
         // new logrus instance
         logger := logrus.New()
 
-        // create a connection to logstash
-        conn, err := net.Dial("tcp", "logstash.mycompany.net:8911")  // this port must match the Logstash input tcp port previously configured
-        if err != nil {
-                log.Fatal(err)
-        }
-
         // these fields will be at the top-level fields of documents
         predefinedFields := logrus.Fields{"type": "myappName"}
 
         // create a hook to send logs to Logstash
-        hook := logrustash.New(conn, logrustash.DefaultFormatter(predefinedFields))
+        hook, err := logrustash.New("tcp", "logstash.mycompany.net:8911", logrustash.DefaultFormatter(predefinedFields))
+        if err != nil {
+                log.Fatal(err)
+        }
 
         // add this hook to the logger
         logger.Hooks.Add(hook)
@@ -155,17 +154,14 @@ func main() {
         // set ReportCaller to true to get the callframe
         Log.SetReportCaller(true)
 
-        // create a connection to logstash
-        conn, err := net.Dial("tcp", "logstash.mycompany.net:8911")  // this port must match the Logstash input tcp port previously configured
-        if err != nil {
-                log.Fatal(err)
-        }
-
         // these fields will be at the top-level fields of documents
         predefinedFields := logrus.Fields{"type": "myappName"}
 
         // create a hook to send logs to Logstash
-        hook := logrustash.New(conn, logrustash.DefaultFormatter(predefinedFields))
+        hook, err := logrustash.New("tcp", "logstash.mycompany.net:8911", logrustash.DefaultFormatter(predefinedFields))
+        if err != nil {
+                log.Fatal(err)
+        }
 
         // add this hook to the logger
         Log.Hooks.Add(hook)
