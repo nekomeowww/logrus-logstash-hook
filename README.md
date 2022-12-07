@@ -6,7 +6,7 @@ Use this hook to send the logs to [Logstash](https://www.elastic.co/products/log
 
 Improved with better callframe override abilities and better support for elasticsearch index patterns by merging additional fields into `key=val` format and store them into `fields` field in elasticsearch document.
 
-# Usage
+## Usage
 
 ### Logstash configuration
 
@@ -59,7 +59,7 @@ import (
         "net"
 
         "github.com/sirupsen/logrus"
-        logrustash "github.com/nekomeowww/logrus-logstash-hook"        
+        logrustash "github.com/nekomeowww/logrus-logstash-hook"
 )
 
 func main() {
@@ -76,7 +76,7 @@ func main() {
         predefinedFields := logrus.Fields{"type": "myappName"}
 
         // create a hook to send logs to Logstash
-        hook := logrustash.New(conn, logrustash.DefaultFormatter(predefinedFields)) 
+        hook := logrustash.New(conn, logrustash.DefaultFormatter(predefinedFields))
 
         // add this hook to the logger
         logger.Hooks.Add(hook)
@@ -117,8 +117,8 @@ import (
 
         "github.com/sirupsen/logrus"
         logrustash "github.com/nekomeowww/logrus-logstash-hook"
-        
-        
+
+
 )
 
 var Log *logrus.Logger
@@ -134,7 +134,7 @@ func setCaller(entry *logrus.Entry) {
                 // get the function name
                 funcName = funcDetail.Name()
         }
-        
+
         // set the caller context into entry.Context
         entry.Context = context.WithValue(context.Background(), logrustash.ContextKeyRuntimeCaller, &runtime.Frame{
                 File:     file,
@@ -165,7 +165,7 @@ func main() {
         predefinedFields := logrus.Fields{"type": "myappName"}
 
         // create a hook to send logs to Logstash
-        hook := logrustash.New(conn, logrustash.DefaultFormatter(predefinedFields)) 
+        hook := logrustash.New(conn, logrustash.DefaultFormatter(predefinedFields))
 
         // add this hook to the logger
         Log.Hooks.Add(hook)
@@ -187,16 +187,16 @@ func main() {
 }
 ```
 
-# Original Creator 
+## Original Creator
 
-[Boaz Shuster](https://github.com/bshuster-repo) 
+[Boaz Shuster](https://github.com/bshuster-repo)
 
-# Maintainers
+## Maintainers
 
 Name         | Github         |
 ------------ | -------------- |
 Ayaka Neko   | @nekomeowww    |
 
-# License
+## License
 
 MIT.

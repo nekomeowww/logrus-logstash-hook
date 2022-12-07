@@ -26,7 +26,7 @@ func TestFire(t *testing.T) {
 
 	buffer := bytes.NewBuffer(nil)
 	h := Hook{
-		writer:    buffer,
+		conn:      buffer,
 		formatter: simpleFmter{},
 	}
 
@@ -53,7 +53,7 @@ func TestFireFormatError(t *testing.T) {
 
 	buffer := bytes.NewBuffer(nil)
 	h := Hook{
-		writer:    buffer,
+		conn:      buffer,
 		formatter: FailFmt{},
 	}
 
@@ -71,7 +71,7 @@ func TestFireWriteError(t *testing.T) {
 	assert := assert.New(t)
 
 	h := Hook{
-		writer:    FailWrite{},
+		conn:    FailWrite{},
 		formatter: &logrus.JSONFormatter{},
 	}
 

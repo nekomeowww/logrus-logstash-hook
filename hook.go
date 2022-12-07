@@ -3,11 +3,13 @@ package logrustash
 import (
 	"fmt"
 	"io"
+	"net"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,39 +24,111 @@ const (
 // formatter to format the entry to a Logstash format before sending.
 //
 // To initialize it use the `New` function.
-//
 type Hook struct {
-	writer    io.Writer
+	sync.RWMutex
+
+	conn     io.Writer
+	protocol string
+	addr     string
+
 	formatter logrus.Formatter
 }
 
-// New returns a new logrus.Hook for Logstash.
-//
-// To create a new hook that sends logs to `tcp://logstash.corp.io:9999`:
-//
-// conn, _ := net.Dial("tcp", "logstash.corp.io:9999")
-// hook := logrustash.New(conn, logrustash.DefaultFormatter())
-func New(w io.Writer, f logrus.Formatter) logrus.Hook {
-	return Hook{
-		writer:    w,
-		formatter: f,
+type HookOptions struct {
+	KeepAlive       bool
+	KeepAlivePeriod time.Duration
+}
+
+// New returns a new logrus.Hook for Logstash
+func New(protocol, addr string, f logrus.Formatter, opts ...*HookOptions) (logrus.Hook, error) {
+	if protocol == "" || addr == "" {
+		return nil, fmt.Errorf("protocol and addr must be set")
 	}
+
+	conn, err := net.Dial(protocol, addr)
+	if err != nil {
+		return nil, err
+	}
+	if len(opts) > 0 && opts[0] != nil {
+		if opts[0].KeepAlive {
+			if c, ok := conn.(*net.TCPConn); ok && c != nil {
+				err = c.SetKeepAlive(true)
+				if err != nil {
+					return nil, err
+				}
+
+				err = c.SetKeepAlivePeriod(opts[0].KeepAlivePeriod)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	return &Hook{
+		protocol:  protocol,
+		addr:      addr,
+		conn:      conn,
+		formatter: f,
+	}, nil
+}
+
+func (h *Hook) reconnect() {
+	// Sleep before reconnect.
+	_, _, _ = lo.AttemptWithDelay(0, time.Second*5, func(index int, duration time.Duration) error {
+		conn, err := net.Dial(h.protocol, h.addr)
+		// Oops. Can't connect. No problem. Let's try again.
+		if err != nil {
+			return err
+		}
+
+		h.Lock()
+		h.conn = conn
+		h.Unlock()
+		return nil
+	})
+}
+
+func (h *Hook) processSendError(err error, data []byte) error {
+	netErr, ok := err.(net.Error)
+	if !ok {
+		return err
+	}
+
+	if netErr.Timeout() {
+		return h.send(data)
+	}
+
+	h.reconnect()
+	return h.send(data)
+}
+
+func (h *Hook) send(data []byte) error {
+	h.Lock()
+	_, err := h.conn.Write(data)
+	h.Unlock()
+	if err != nil {
+		return h.processSendError(err, data)
+	}
+
+	return nil
 }
 
 // Fire takes, formats and sends the entry to Logstash.
 // Hook's formatter is used to format the entry into Logstash format
 // and Hook's writer is used to write the formatted entry to the Logstash instance.
-func (h Hook) Fire(e *logrus.Entry) error {
+func (h *Hook) Fire(e *logrus.Entry) error {
 	dataBytes, err := h.formatter.Format(e)
 	if err != nil {
 		return err
 	}
-	_, err = h.writer.Write(dataBytes)
+
+	err = h.send(dataBytes)
 	return err
 }
 
 // Levels returns all logrus levels.
-func (h Hook) Levels() []logrus.Level {
+func (h *Hook) Levels() []logrus.Level {
 	return logrus.AllLevels
 }
 
@@ -93,12 +167,12 @@ func copyEntry(e *logrus.Entry, fields logrus.Fields) *logrus.Entry {
 	}
 
 	if len(e.Data) > 0 {
-		fieldsStrs := make([]string, 0)
+		fieldsStrings := make([]string, 0)
 		for k, v := range e.Data {
-			fieldsStrs = append(fieldsStrs, fmt.Sprintf("%s=%v", k, v))
+			fieldsStrings = append(fieldsStrings, fmt.Sprintf("%s=%v", k, v))
 			delete(e.Data, k)
 		}
-		ne.Data["fields"] = strings.Join(fieldsStrs, " ")
+		ne.Data["fields"] = strings.Join(fieldsStrings, " ")
 	}
 
 	for k, v := range fields {
